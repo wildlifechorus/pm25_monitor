@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/f6449bcc-4c10-4d97-9ecb-404aa252bd0b" alt="photo">
+</p>
+
 # PM2.5 Monitor with SDS 011 and Telegram Alerts
 
 This project uses a **Raspberry Pi 3 Model B** and an **SDS 011** sensor to monitor air quality by measuring both **PM2.5** and **PM10** values. The sensor provides real-time data on air pollution, and the system logs this data to **Adafruit IO**. Additionally, PM2.5 and PM10 values are sent hourly to a **Telegram Channel** with color-coded air quality indicators to notify users about current air quality levels.
