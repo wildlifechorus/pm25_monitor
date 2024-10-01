@@ -52,7 +52,7 @@ def read_pm_values():
     pmten = int.from_bytes(b''.join(data[4:6]), byteorder='little') / 10
 
     # Send values to Adafruit IO
-    aio.send('air-quality-pm-2-5', float(pmtwofive))  # Ensure values are floats
+    aio.send('air-quality-pm-2-5', float(pmtwofive))
     aio.send('pm-ten', float(pmten))
 
     return pmtwofive, pmten
@@ -71,19 +71,21 @@ async def send_to_telegram(pmtwofive, pmten):
     # Send message to Telegram
     await bot.send_message(chat_id=channel_id, text=message, parse_mode='Markdown')
 
-def hourly_task():
+async def hourly_task():
     """Task that runs every hour to send PM2.5 and PM10 values to Telegram."""
     pmtwofive, pmten = read_pm_values()
-    asyncio.run(send_to_telegram(pmtwofive, pmten))
+    await send_to_telegram(pmtwofive, pmten)
 
-# Schedule the task to run every hour
-schedule.every().hour.do(hourly_task)
+async def run_scheduler():
+    """Run the scheduler inside the event loop."""
+    while True:
+        schedule.run_pending()
+        await asyncio.sleep(1)
 
 if __name__ == '__main__':
-    while True:
-        # Run scheduled tasks
-        schedule.run_pending()
+    # Schedule the task to run every hour
+    schedule.every().hour.do(lambda: asyncio.create_task(hourly_task()))
 
-        # Read and send PM values every 10 seconds to Adafruit IO
-        read_pm_values()
-        time.sleep(10)
+    # Get the current event loop and run the scheduler
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(run_scheduler())
