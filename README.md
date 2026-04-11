@@ -4,7 +4,7 @@
 
 # PM2.5 Monitor with SDS 011 and Telegram Alerts
 
-This project uses a **Raspberry Pi 3 Model B** and an **SDS 011** sensor to monitor air quality by measuring both **PM2.5** and **PM10** values. The sensor provides real-time data on air pollution, and the system logs this data to **Adafruit IO**. Additionally, PM2.5 and PM10 values are sent hourly to a **Telegram Channel** with color-coded air quality indicators to notify users about current air quality levels.
+This project uses a **Raspberry Pi 3 Model B** and an **SDS 011** sensor to monitor air quality by measuring both **PM2.5** and **PM10** values. The sensor provides real-time data on air pollution, and the system logs this data to **Adafruit IO**. Additionally, PM2.5 and PM10 values are sent to a **Telegram Channel** every 30 minutes with color-coded air quality indicators — notifications are suppressed when air quality is Good. A `/status` command lets you request the current reading at any time.
 
 ---
 
@@ -27,7 +27,8 @@ This project uses a **Raspberry Pi 3 Model B** and an **SDS 011** sensor to moni
 The **SDS 011 Sensor** is a reliable air quality sensor developed by Nova Fitness, capable of detecting particulate matter (PM) with a diameter of less than 2.5 micrometers (PM2.5). This project gathers air quality data using the sensor and a **Raspberry Pi 3 Model B**. The data is:
 
 - Logged to **Adafruit IO** for tracking air quality over time.
-- Sent to a **Telegram Channel** every hour, providing timely updates on air quality conditions.
+- Sent to a **Telegram Channel** every 30 minutes when quality is Moderate or Unhealthy.
+- Available on-demand via the `/status` bot command.
 
 PM2.5 is a widely accepted indicator of air quality, and this project follows guidelines set by the **World Health Organization (WHO)**, which recommends a PM2.5 value not exceeding 10 μg/m³ annually or 25 μg/m³ over 24 hours.
 
@@ -61,7 +62,7 @@ sudo apt update
 sudo apt install python3-pip
 python3 -m venv venv
 source venv/bin/activate
-pip3 install setuptools pyserial adafruit-io python-telegram-bot schedule python-dotenv
+pip3 install setuptools pyserial adafruit-io python-telegram-bot python-dotenv
 ```
 
 ---
@@ -108,19 +109,22 @@ pip3 install setuptools pyserial adafruit-io python-telegram-bot schedule python
 
 Once the script is running, it will:
 
-1. Collect **PM2.5** and **PM10** data from the **SDS 011** sensor every 10 seconds.
-2. Send the PM2.5 and PM10 data to **Adafruit IO** for real-time logging.
-3. Send a message with both **PM2.5** and **PM10** values to your **Telegram Channel** every hour, along with color-coded air quality status (🟢 Good, 🟡 Moderate, 🔴 Unhealthy).
+1. Collect **PM2.5** and **PM10** data from the **SDS 011** sensor.
+2. Send the data to **Adafruit IO** for real-time logging.
+3. Send a message with both **PM2.5** and **PM10** values to your **Telegram Channel** every **30 minutes** — only when quality is 🟡 Moderate or 🔴 Unhealthy (🟢 Good is silently skipped).
+4. Respond to the `/status` command in your channel with a fresh reading, regardless of quality level.
 
 ---
 
 ## Telegram Integration
 
-To send PM2.5 data to a Telegram channel:
+To send PM2.5/PM10 data to a Telegram channel and handle the `/status` command:
 
 1. **Create a Telegram bot** using [BotFather](https://t.me/botfather).
-2. Add the bot to your channel as an admin.
+2. Add the bot to your channel as an admin with **message posting** rights.
 3. Obtain the bot token and channel ID, and add them to your `.env` file.
+4. Register the `/status` command with BotFather (optional, for the command menu):
+   - Send `/setcommands` to BotFather, select your bot, and enter: `status - Get current air quality`
 
 ---
 
