@@ -62,7 +62,7 @@ sudo apt update
 sudo apt install python3-pip
 python3 -m venv venv
 source venv/bin/activate
-pip3 install setuptools pyserial adafruit-io python-telegram-bot python-dotenv
+pip3 install setuptools pyserial adafruit-io "python-telegram-bot[job-queue]" python-dotenv
 ```
 
 ---

@@ -8,7 +8,7 @@ channel every 30 minutes. Notifications are suppressed when both readings are
 time.
 
 Dependencies (install via pip):
-  pyserial adafruit-io python-telegram-bot python-dotenv
+  pyserial adafruit-io "python-telegram-bot[job-queue]" python-dotenv
 
 Environment variables (see .env.example):
   AIO_USER_NAME, AIO_KEY, TELEGRAM_TOKEN, CHANNEL_ID
@@ -100,13 +100,18 @@ def air_quality_level(pm_value: float, pm_type: str) -> str:
 
 
 def _build_message(pmtwofive: float, pmten: float) -> str:
-  """Format the Telegram notification message."""
+  """
+  Format the Telegram notification message using HTML parse mode.
+
+  HTML is used instead of MarkdownV2 to avoid having to escape every
+  special character (e.g. '.') that appears in dynamic float values.
+  """
   pm25_status = air_quality_level(pmtwofive, 'pm25')
   pm10_status = air_quality_level(pmten, 'pm10')
 
   return (
-    '🌍 *Air Quality Update* 🌍\n'
-    f'PM2\\.5: {pmtwofive:.1f} µg/m³ — {pm25_status}\n'
+    '🌍 <b>Air Quality Update</b> 🌍\n'
+    f'PM2.5: {pmtwofive:.1f} µg/m³ — {pm25_status}\n'
     f'PM10:  {pmten:.1f} µg/m³ — {pm10_status}'
   )
 
@@ -179,7 +184,7 @@ async def periodic_update(context: ContextTypes.DEFAULT_TYPE) -> None:
     await context.bot.send_message(
       chat_id=channel_id,
       text=message,
-      parse_mode='MarkdownV2',
+      parse_mode='HTML',
     )
     logger.info('Notification sent (PM2.5=%.1f, PM10=%.1f).', pmtwofive, pmten)
   except Exception as exc:
@@ -200,22 +205,28 @@ async def status_command(
 
   Reads a fresh value from the sensor and replies with the current air
   quality status, regardless of whether it is Good or not.
+
+  update.effective_message is PTB's built-in property that resolves to
+  whichever of message / channel_post / edited_message is present, so
+  this handler works in DMs, groups, and channels without extra branching.
   """
-  if update.message is None:
+  # effective_message covers message, channel_post, and edited variants
+  msg = update.effective_message
+  if msg is None:
     return
 
-  await update.message.reply_text('⏳ Reading sensor, one moment…')
+  await msg.reply_text('⏳ Reading sensor, one moment…')
 
   try:
     pmtwofive, pmten = await read_pm_values()
   except Exception as exc:
     logger.error('/status sensor read failed: %s', exc)
-    await update.message.reply_text('❌ Could not read sensor data. Please try again.')
+    await msg.reply_text('❌ Could not read sensor data. Please try again.')
     return
 
   message = _build_message(pmtwofive, pmten)
 
-  await update.message.reply_text(message, parse_mode='MarkdownV2')
+  await msg.reply_text(message, parse_mode='HTML')
 
 
 # ---------------------------------------------------------------------------
@@ -238,4 +249,7 @@ if __name__ == '__main__':
   )
 
   logger.info('Bot started. Periodic updates every 30 minutes.')
-  app.run_polling()
+  # ALL_TYPES ensures channel_post updates are requested from Telegram.
+  # Without this, PTB's auto-detection only requests 'message' updates,
+  # so commands posted in a channel are never delivered to the bot.
+  app.run_polling(allowed_updates=Update.ALL_TYPES)
